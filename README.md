@@ -65,6 +65,7 @@ platform-automation-patterns/
 ├── docs/
 │   └── design notes and explanations
 └── README.md
+```
 
 ---
 
