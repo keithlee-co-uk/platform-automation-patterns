@@ -1,195 +1,172 @@
-# Phase 0 – Foundation
+# Phase 0 - Foundation
 
-## Purpose
+## Why not dive in to automation?
 
-Establish a stable, predictable, and well-understood base environment across all available hardware.
+Before building anything, I want a setup that is predictable and easy to work with.  
+This is about getting a setup that is simple and can be build on, with the limited unused hardware I have around.
 
-This phase focuses on clarity and consistency rather than tooling. No automation or services are introduced at this stage.
-
----
-
-## Goals
-
-- Define and document all hardware
-- Establish consistent naming
-- Ensure reliable SSH access to all nodes
-- Ensure systems are reachable and predictable on the network
-- Create a clear platform topology that matches reality
+No automation, no containers, no tooling. Just a stable environment.
 
 ---
 
-## Platform Topology
+## What I want out of this
 
-### Control Node
+By the end of this phase:
 
-- Hostname: control-node
-- Device: Lenovo L580
-- Specifications: 16GB RAM, 256GB SSD
-- Architecture: x86_64
-- Role: Platform control, management, and core services
+- every device is clearly identified
+- I can connect to everything easily
+- nothing relies on remembering IP addresses
+- the repo reflects what actually exists
 
----
-
-### Worker Nodes
-
-- pi-node-1 (Raspberry Pi 4)
-- pi-node-2 (Raspberry Pi 4)
-- pi-node-3 (Raspberry Pi 4)
-
-- Architecture: ARM
-- Role: Primary workload execution (services, containers, experiments)
+If I have to stop and think "which machine is this?", then this phase is not done.
 
 ---
 
-### Legacy Nodes
+## Current setup
 
-- pi-legacy-a (Raspberry Pi 1 Model A)
-- pi-legacy-b (Raspberry Pi 1 Model B+)
+### Control node
 
-- Architecture: ARM (very low capability)
-- Role:
-  - Constraint testing
-  - Lightweight services
-  - Failure simulation
-  - Edge scenarios
+- control-node
+- Lenovo L580 (16GB RAM, 256GB SSD)
+- x86-64
 
-Legacy nodes are not part of the primary workload pool and must be explicitly targeted for use.
+This will become the main control point for the platform. It is the most reliable and capable machine I have in this setup.
 
 ---
 
-## Hardware Characteristics
+### Worker nodes
 
-The platform contains mixed hardware with significant differences in capacity and architecture.
+- pi-node-1
+- pi-node-2
+- pi-node-3
 
-### Summary
+(All Raspberry Pi 4)
 
-- control-node: High capacity, x86_64
-- worker nodes: Moderate capacity, ARM (Pi 4)
-- legacy nodes: Extremely constrained, ARM (Pi 1)
-
-### Implications
-
-- Not all workloads can run on all nodes
-- Some software will not support older ARM architectures
-- Resource constraints vary significantly
-- Workload placement decisions will be required in later phases
+These will be used to actually run services and workloads.
 
 ---
 
-## Naming Convention
+### Legacy nodes
 
-All nodes use a consistent and descriptive naming scheme:
+- pi-legacy-a (Pi 1 Model A)
+- pi-legacy-b (Pi 1 Model B+)
 
-control-node
-pi-node-1
-pi-node-2
-pi-node-3
-pi-legacy-a
-pi-legacy-b
+These are very limited machines. They are not part of the normal workload pool.
 
-Naming is:
+I will use them for:
+- testing constrained scenarios
+- intentionally pushing limits
+- understanding failure behaviour
 
-- stable
-- descriptive
-- consistent across all documentation and access methods
+---
+
+## A note on hardware
+
+This is deliberately mixed:
+
+- laptop: strong, reliable
+- Pi 4s: reasonable capacity
+- Pi 1s: very limited
+
+That is intentional.
+
+It forces decisions about where things should run instead of assuming everything is the same.
+
+---
+
+## Naming
+
+Everything has a fixed name:
+
+control-node  
+pi-node-1  
+pi-node-2  
+pi-node-3  
+pi-legacy-a  
+pi-legacy-b  
+
+These names will not change later. If they do, something has gone wrong.
 
 ---
 
 ## Access
 
-### SSH
+I should be able to SSH to anything without thinking about it.
 
-All nodes are accessible from the development machine via SSH.
+From my dev machine:
 
-Requirements:
+ssh control-node  
+ssh pi-node-1  
+ssh pi-legacy-a  
 
-- SSH key-based authentication is configured
-- Password authentication is not required for normal access
-- Consistent user account across nodes (e.g. pi)
+No passwords, no trial and error.
 
-Example:
-
-ssh control-node
-ssh pi-node-1
-ssh pi-legacy-a
+If connecting to a node feels awkward, that is something to fix in this phase.
 
 ---
 
-## Network
+## Networking
 
-### Requirements
+No complicated networking setup.
 
-- All nodes have stable and predictable identity
-- Nodes are accessible by hostname or reserved IP
+Just:
 
-Approach:
+- each node has a stable identity (hostname or reserved IP)
+- I can reach each node by name
 
-- DHCP reservations preferred
-- Alternatively, local hostname resolution may be used
-
-### Outcome
-
-- No need to manually track IP addresses
-- Nodes are consistently reachable
+I should never need to remember an IP address.
 
 ---
 
-## System State
+## Baseline state
 
-Each node should:
+All nodes should:
 
-- Be updated to latest available packages
-- Use a consistent base operating system where possible
-- Have consistent user and access configuration
+- be updated
+- have a consistent user account
+- be in a usable, known-good state
 
----
-
-## Validation
-
-Phase 0 is considered complete when the following commands succeed reliably from the development machine:
-
-ssh control-node uptime
-ssh pi-node-1 uptime
-ssh pi-node-2 uptime
-ssh pi-node-3 uptime
-ssh pi-legacy-a uptime
-ssh pi-legacy-b uptime
+Nothing special, just clean.
 
 ---
 
-## Scope Boundary
+## How I know this phase is done
 
-Phase 0 explicitly does not include:
+From my dev machine, these should all work without friction:
 
-- Infrastructure as Code (Ansible)
-- Docker or container runtime
-- Kubernetes or orchestration
-- Monitoring systems
-- CI/CD pipelines
-- Service deployment
+ssh control-node uptime  
+ssh pi-node-1 uptime  
+ssh pi-node-2 uptime  
+ssh pi-node-3 uptime  
+ssh pi-legacy-a uptime  
+ssh pi-legacy-b uptime  
 
-These are introduced in later phases.
-
----
-
-## Outcome
-
-At the end of Phase 0:
-
-- All hardware is clearly defined and understood
-- All nodes are accessible and predictable
-- The platform topology is documented accurately
-- There is a stable foundation for future automation
+If any of these are unreliable or annoying, there is still work to do.
 
 ---
 
-## Notes
+## What I am not doing yet
 
-This phase prioritises:
+I am deliberately avoiding:
 
-- simplicity
-- clarity
-- reproducibility
+- Ansible
+- Docker
+- Kubernetes
+- monitoring
+- CI/CD
+- running services
 
-The goal is not to build a system yet, but to ensure that the system can be understood and controlled before further complexity is introduced.
+That comes later.
 
+---
+
+## End state
+
+At this point:
+
+- the system is simple and predictable
+- I understand what each machine is for
+- I can access everything quickly
+- I have a clean base to build from
+
+That is enough. Anything more at this stage is unnecessary.
