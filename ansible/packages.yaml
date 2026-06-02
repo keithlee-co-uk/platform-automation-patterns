@@ -1,0 +1,33 @@
+---
+
+- hosts: all
+  become: true
+  tasks:
+
+  - name: Upgrade all packages
+    tags: always
+    package:
+      upgrade: dist
+      update_cache: yes
+      autoclean: true
+      autoremove: true
+
+- hosts: all
+  become: true
+  roles: 
+    - base
+
+- hosts: workstation
+  become: true
+  roles: 
+    - workstation
+
+- hosts: legacy
+  become: true
+  roles: 
+    - legacy
+
+- hosts: node
+  become: true
+  roles: 
+    - node

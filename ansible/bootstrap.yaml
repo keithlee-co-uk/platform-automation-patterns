@@ -1,0 +1,34 @@
+---
+
+- hosts: all
+  become: true
+  pre_tasks:
+
+  - name: upgrade
+    tags: always
+    package:
+      upgrade: dist
+      update_cache: yes
+      autoclean: true
+      autoremove: true
+
+  - name: Add Ansible user
+    tags: always
+    user:
+      name: ansible
+      groups: root
+
+  - name: Add ssh key for Ansible user
+    tags: always
+    authorized_key:
+      user: ansible
+      key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILkh7CTt3BfWzeBW7Qiqlt6OVOdFLRuI1z48ZN2bKcH7 ansible
+
+  - name: add Ansible sudoers
+    tags: always
+    copy:
+      src: sudoer_ansible
+      dest: /etc/sudoers.d/ansible 
+      owner: root
+      group: root
+      mode: 0440

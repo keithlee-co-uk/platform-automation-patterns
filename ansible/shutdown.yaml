@@ -1,0 +1,12 @@
+---
+
+- hosts: server
+  become: true
+  tasks:
+
+
+  - name: Shut down the system and power it off
+    ansible.builtin.shell: shutdown -P now
+    async: 0
+    poll: 0
+    ignore_errors: true
