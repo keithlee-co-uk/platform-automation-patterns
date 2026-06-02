@@ -4,7 +4,6 @@
   become: true
   tasks:
 
-
   - name: Shut down the system and power it off
     ansible.builtin.shell: shutdown -P now
     async: 0

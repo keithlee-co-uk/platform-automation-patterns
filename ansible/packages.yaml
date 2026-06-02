@@ -2,7 +2,7 @@
 
 - hosts: all
   become: true
-  tasks:
+  pre_tasks:
 
   - name: Upgrade all packages
     tags: always
