@@ -22,11 +22,6 @@
   roles: 
     - workstation
 
-- hosts: legacy
-  become: true
-  roles: 
-    - legacy
-
 - hosts: node
   become: true
   roles: 
