@@ -2,96 +2,79 @@
 
 ## Purpose
 
-Establish a stable, predictable, and well-understood base environment across all available hardware.
+Establish a stable, predictable, and well-understood base environment across the available hardware.
 
-This phase focuses on clarity and consistency rather than tooling. No automation or services are introduced at this stage.
+This phase focuses on clarity and consistency. Automation is introduced only where it directly supports that consistency, and no services beyond what is needed to manage the machines are deployed at this stage.
 
 ---
 
 ## Goals
 
-- Define and document all hardware
+- Define and document the current hardware
 - Establish consistent naming
-- Ensure reliable SSH access to all nodes
+- Ensure reliable SSH access to every host
 - Ensure systems are reachable and predictable on the network
-- Create a clear platform topology that matches reality
+- Introduce Ansible as the single management path, with a clear bootstrap-to-managed handoff
+- Create a platform topology that matches reality
 
 ---
 
 ## Platform Topology
 
-### Control Node
+The platform has been reduced to the hardware that is actually in use. Devices that are switched off or retired are not listed here and are not managed.
 
-- Hostname: control-node
-- Device: Lenovo L580
-- Specifications: 16GB RAM, 256GB SSD
+### Monitoring Node
+
+- Hostname: `prometheus`
+- Device: Raspberry Pi 4 Model B (2 GB)
+- Architecture: ARM (aarch64)
+- Role: Dedicated monitoring host. Runs Prometheus and its exporters, probing the rest of the platform.
+- Connectivity: Ethernet, direct to a router LAN port. Not behind the office powerline segment, so it retains network access when that segment fails. Powered from the modem UPS so it also survives mains interruptions.
+
+### Server
+
+- Hostname: `hermes`
+- Device: x86_64 server
 - Architecture: x86_64
-- Role: Platform control, management, and core services
+- Role: Hosts the Hermes agent (in Docker) and other containerised services. Sits in the office behind the powerline segment.
+- Connectivity: Ethernet via the office switch.
+- `hermes-server` is the Tailscale hostname.
 
----
+### Workstation
 
-### Worker Nodes
-
-- pi-node-1 (Raspberry Pi 4)
-- pi-node-2 (Raspberry Pi 4)
-- pi-node-3 (Raspberry Pi 4)
-
-- Architecture: ARM
-- Role: Primary workload execution (services, containers, experiments)
-
----
-
-### Legacy Nodes
-
-- pi-legacy-a (Raspberry Pi 1 Model A)
-- pi-legacy-b (Raspberry Pi 1 Model B+)
-
-- Architecture: ARM (very low capability)
-- Role:
-  - Constraint testing
-  - Lightweight services
-  - Failure simulation
-  - Edge scenarios
-
-Legacy nodes are not part of the primary workload pool and must be explicitly targeted for use.
+- Hostname: `localhost` (the development machine)
+- Device: laptop
+- Role: Control node for Ansible. The machine from which playbooks are run.
 
 ---
 
 ## Hardware Characteristics
 
-The platform contains mixed hardware with significant differences in capacity and architecture.
+The platform now contains a small number of heterogeneous hosts.
 
 ### Summary
 
-- control-node: High capacity, x86_64
-- worker nodes: Moderate capacity, ARM (Pi 4)
-- legacy nodes: Extremely constrained, ARM (Pi 1)
+- `prometheus`: constrained, ARM (Pi 4, 2 GB)
+- `hermes`: higher capacity, x86_64
+- `localhost`: the laptop, used as the control node
 
 ### Implications
 
-- Not all workloads can run on all nodes
-- Some software will not support older ARM architectures
-- Resource constraints vary significantly
-- Workload placement decisions will be required in later phases
+- Not all workloads can run on all hosts.
+- The 2 GB Pi 4 cannot comfortably run both Prometheus and Grafana together. The monitoring design splits these: Prometheus runs on the Pi; Grafana runs elsewhere (on `hermes`).
+- The office hosts (`hermes`, and any ethernet-attached laptop or Pi) share a single failure point: the powerline segment to the router. `prometheus` is deliberately placed on the router side so it can observe that segment rather than share its failure.
 
 ---
 
 ## Naming Convention
 
-All nodes use a consistent and descriptive naming scheme:
+Hosts use a descriptive name rather than a positional one:
 
-control-node
-pi-node-1
-pi-node-2
-pi-node-3
-pi-legacy-a
-pi-legacy-b
+- `prometheus` — the monitoring node
+- `hermes` — the server
+- `localhost` — the control node
 
-Naming is:
-
-- stable
-- descriptive
-- consistent across all documentation and access methods
+Naming is stable, descriptive, and consistent across documentation and access methods.
 
 ---
 
@@ -99,19 +82,53 @@ Naming is:
 
 ### SSH
 
-All nodes are accessible from the development machine via SSH.
+All hosts are reachable from the development machine over SSH.
 
-Requirements:
+There are two distinct access stages:
 
-- SSH key-based authentication is configured
-- Password authentication is not required for normal access
-- Consistent user account across nodes (e.g. pi)
+1. **Bootstrap stage** — the initial connection to a freshly installed machine uses the local `keith` account and the personal key. This is configured with `ansible-bootstrap.cfg` (`remote_user = keith`, `private_key_file = ~/.ssh/id_rsa`) and requires `--ask-become-pass`.
+2. **Managed stage** — once the `ansible` user has been created with passwordless sudo and an authorised key, day-to-day management uses `ansible.cfg` (`remote_user = ansible`, `private_key_file = ~/.ssh/id_ansible`).
 
 Example:
 
-ssh control-node
-ssh pi-node-1
-ssh pi-legacy-a
+```
+ssh ansible@prometheus
+ssh ansible@hermes
+```
+
+---
+
+## Ansible Management
+
+Playbooks live in `ansible/`. Two configuration files select the access stage:
+
+- `ansible-bootstrap.cfg` — for the initial bootstrap of a fresh host.
+- `ansible.cfg` — for normal management once the `ansible` user exists.
+
+The inventory defines three groups:
+
+- `[monitor]` — `prometheus`
+- `[workstation]` — `localhost`
+- `[server]` — `prometheus` and `hermes`
+
+### Bootstrap
+
+`bootstrap.yaml` runs against all hosts and does the following:
+
+1. Upgrades the base system.
+2. Creates the `ansible` user.
+3. Adds the Ansible SSH key to that user.
+4. Installs passwordless sudo for the `ansible` user.
+
+Run it against a freshly installed machine:
+
+```
+ANSIBLE_CONFIG=ansible-bootstrap.cfg ansible-playbook --ask-become-pass bootstrap.yaml
+```
+
+### Managed state
+
+`packages.yaml` is the day-to-day playbook: it upgrades packages and applies the roles to the appropriate groups.
 
 ---
 
@@ -119,41 +136,37 @@ ssh pi-legacy-a
 
 ### Requirements
 
-- All nodes have stable and predictable identity
-- Nodes are accessible by hostname or reserved IP
+- All hosts have stable and predictable identity.
+- Hosts are reachable by hostname or reserved IP.
 
-Approach:
+### Approach
 
-- DHCP reservations preferred
-- Alternatively, local hostname resolution may be used
+- DHCP reservations are preferred.
+- Alternatively, local hostname resolution may be used.
 
-### Outcome
-
-- No need to manually track IP addresses
-- Nodes are consistently reachable
+Per-host network details (management IP, service IP, Tailscale hostname) live in `host_vars/` so they are kept out of the playbooks themselves.
 
 ---
 
 ## System State
 
-Each node should:
+Each host should:
 
-- Be updated to latest available packages
-- Use a consistent base operating system where possible
-- Have consistent user and access configuration
+- Be updated to the latest available packages.
+- Use a consistent base operating system where possible (Debian).
+- Have a consistent `ansible` user and access configuration.
 
 ---
 
 ## Validation
 
-Phase 0 is considered complete when the following commands succeed reliably from the development machine:
+Phase 0 is considered complete when the following succeed reliably from the development machine:
 
-ssh control-node uptime
-ssh pi-node-1 uptime
-ssh pi-node-2 uptime
-ssh pi-node-3 uptime
-ssh pi-legacy-a uptime
-ssh pi-legacy-b uptime
+```
+ssh ansible@prometheus uptime
+ssh ansible@hermes uptime
+ANSIBLE_CONFIG=ansible.cfg ansible-playbook --check packages.yaml
+```
 
 ---
 
@@ -161,14 +174,12 @@ ssh pi-legacy-b uptime
 
 Phase 0 explicitly does not include:
 
-- Infrastructure as Code (Ansible)
-- Docker or container runtime
-- Kubernetes or orchestration
-- Monitoring systems
+- Service deployment (Prometheus, Grafana, exporters)
+- Monitoring configuration
+- Container orchestration
 - CI/CD pipelines
-- Service deployment
 
-These are introduced in later phases.
+These are introduced in later phases. The monitoring design that builds on this foundation is documented separately in the project notes.
 
 ---
 
@@ -176,10 +187,10 @@ These are introduced in later phases.
 
 At the end of Phase 0:
 
-- All hardware is clearly defined and understood
-- All nodes are accessible and predictable
-- The platform topology is documented accurately
-- There is a stable foundation for future automation
+- The platform topology is documented accurately and matches the hardware in use.
+- Every host is reachable and predictable.
+- Ansible is the single management path, with a clean bootstrap-to-managed handoff.
+- The foundation exists for the monitoring work that follows.
 
 ---
 
@@ -191,5 +202,4 @@ This phase prioritises:
 - clarity
 - reproducibility
 
-The goal is not to build a system yet, but to ensure that the system can be understood and controlled before further complexity is introduced.
-
+The goal is not to build the system yet, but to ensure the system can be understood and controlled before further complexity is introduced.

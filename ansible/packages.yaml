@@ -22,7 +22,3 @@
   roles: 
     - workstation
 
-- hosts: node
-  become: true
-  roles: 
-    - node
