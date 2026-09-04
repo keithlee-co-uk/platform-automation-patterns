@@ -1,1 +1,1 @@
-ansible ALL=(ALL:ALL) NOPASSWD: ALL
+../../../files/sudoer_ansible
