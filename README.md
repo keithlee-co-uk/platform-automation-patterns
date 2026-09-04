@@ -56,6 +56,8 @@ Examples are grouped by area rather than by technology.
 
 ```text
 platform-automation-patterns/
+├── ansible/
+│   └── infrastructure configuration
 ├── linux/
 │   └── examples of shell or system-level automation
 ├── ci/
