@@ -5,5 +5,5 @@ prometheus
 localhost
 
 [server]
-prometheus
-hermes hermes-server ansible_host=192.168.1.10
+hermes ansible_host=192.168.1.10
+prometheus ansible_host=192.168.1.11
